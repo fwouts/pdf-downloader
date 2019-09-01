@@ -7,12 +7,12 @@ This is a script that leverages Puppeteer to download all PDF files from a websi
 - Install Yarn: https://yarnpkg.com/en/docs/install
 - Install Node: https://nodejs.org/en/download
 - Clone this repository.
-- Run `yarn install` in the repository.
+- Open a terminal (e.g. PowerShell on Windows).
+- Navigate to the repository's directory (using `cd`).
+- Run `yarn install`.
 
 ## Example usage
 
 ```sh
-yarn start \
-    --url https://online2.cityofsydney.nsw.gov.au/DA/IndividualApplication?tpklapappl=1440108 \
-    --output data
+yarn start --output C:/Users/[username]/Downloads/abc --url https://some-url
 ```
