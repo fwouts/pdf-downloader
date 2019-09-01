@@ -2,6 +2,7 @@ import axios from "axios";
 import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import puppeteer from "puppeteer";
+import sanitize from "sanitize-filename";
 import yargs from "yargs";
 
 const argv = yargs
@@ -39,7 +40,7 @@ async function run({ url, output }: typeof argv) {
       // Only look at PDFs.
       continue;
     }
-    const destinationFilename = `${title}.pdf`;
+    const destinationFilename = sanitize(`${title}.pdf`, { replacement: "-" });
     console.log(`Downloading ${destinationFilename}...`);
     const response = await axios.get(link);
     writeFileSync(join(output, destinationFilename), response.data, "utf8");
