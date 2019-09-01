@@ -1,9 +1,12 @@
 import axios from "axios";
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, writeFile } from "fs";
 import { join } from "path";
 import puppeteer from "puppeteer";
 import sanitize from "sanitize-filename";
+import { promisify } from "util";
 import yargs from "yargs";
+
+const writeFileAsync = promisify(writeFile);
 
 const argv = yargs
   .option("url", {
@@ -30,6 +33,7 @@ async function run({ url, output }: typeof argv) {
   await page.goto(url);
 
   const linkElements = await page.$$("a");
+  const downloads: Promise<void>[] = [];
   for (const linkElement of linkElements) {
     const link = (await page.evaluate(
       link => link.href,
@@ -40,12 +44,25 @@ async function run({ url, output }: typeof argv) {
       // Only look at PDFs.
       continue;
     }
-    const destinationFilename = sanitize(`${title}.pdf`, { replacement: "-" });
-    console.log(`Downloading ${destinationFilename}...`);
-    const response = await axios.get(link);
-    writeFileSync(join(output, destinationFilename), response.data, "utf8");
-    console.log(`Successfully downloaded ${destinationFilename}.`);
+    downloads.push(download(output, link, title));
   }
 
   await browser.close();
+  await Promise.all(downloads);
+}
+
+async function download(output: string, link: string, title: string) {
+  const destinationFilename = sanitize(`${title}.pdf`, { replacement: "-" });
+  console.log(`Downloading ${destinationFilename}...`);
+  try {
+    const response = await axios.get(link);
+    await writeFileAsync(
+      join(output, destinationFilename),
+      response.data,
+      "utf8"
+    );
+    console.log(`Successfully downloaded ${destinationFilename}.`);
+  } catch (e) {
+    console.error(`Failed to download ${destinationFilename}.`);
+  }
 }
