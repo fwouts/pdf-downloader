@@ -5,6 +5,7 @@ This is a script that leverages Puppeteer to download all PDF files from a websi
 ## How to setup
 
 - Install Yarn: https://yarnpkg.com/en/docs/install
+- Install Node: https://nodejs.org/en/download
 - Clone this repository.
 - Run `yarn install` in the repository.
 
