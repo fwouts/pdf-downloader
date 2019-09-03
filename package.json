@@ -1,5 +1,5 @@
 {
-  "name": "expenses",
+  "name": "pdf-downloader",
   "author": "Francois Wouts <f@zenc.io>",
   "scripts": {
     "start": "ts-node src/main.ts"
