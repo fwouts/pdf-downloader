@@ -1,4 +1,3 @@
-import axios from "axios";
 import { mkdirSync, writeFile } from "fs";
 import { join } from "path";
 import puppeteer from "puppeteer";
@@ -26,14 +25,14 @@ async function run({ url, output }: typeof argv) {
   });
 
   const browser = await puppeteer.launch({
-    headless: true
+    headless: false
   });
 
   const page = await browser.newPage();
   await page.goto(url);
 
   const linkElements = await page.$$("a");
-  const downloads: Promise<void>[] = [];
+  const promises: Array<Promise<void>> = [];
   for (const linkElement of linkElements) {
     const link = (await page.evaluate(
       link => link.href,
@@ -44,25 +43,53 @@ async function run({ url, output }: typeof argv) {
       // Only look at PDFs.
       continue;
     }
-    downloads.push(download(output, link, title));
+    const destinationFilename = sanitize(`${title}.pdf`, { replacement: "-" });
+    promises.push(download(browser, link, output, destinationFilename));
   }
 
+  await Promise.all(promises);
   await browser.close();
-  await Promise.all(downloads);
 }
 
-async function download(output: string, link: string, title: string) {
-  const destinationFilename = sanitize(`${title}.pdf`, { replacement: "-" });
-  console.log(`Downloading ${destinationFilename}...`);
-  try {
-    const response = await axios.get(link);
-    await writeFileAsync(
-      join(output, destinationFilename),
-      response.data,
-      "utf8"
-    );
-    console.log(`Successfully downloaded ${destinationFilename}.`);
-  } catch (e) {
-    console.error(`Failed to download ${destinationFilename}.`);
-  }
+async function download(
+  browser: puppeteer.Browser,
+  link: string,
+  outputDir: string,
+  destinationFilename: string
+): Promise<void> {
+  const page = await browser.newPage();
+  const client = await page.target().createCDPSession();
+  await client.send("Fetch.enable", {
+    patterns: [
+      {
+        requestStage: "Response"
+      }
+    ]
+  });
+  let onRequestPaused: (e: any) => void;
+  const promise = new Promise<void>(resolve => {
+    onRequestPaused = async e => {
+      if (e.request.url === link) {
+        try {
+          const response = (await client.send("Fetch.getResponseBody", {
+            requestId: e.requestId
+          })) as any;
+          await writeFileAsync(
+            join(outputDir, destinationFilename),
+            response.body,
+            "base64"
+          );
+          console.log(`Saved to ${destinationFilename}.`);
+          resolve();
+        } catch (e) {
+          // Don't fail other downloads.
+          console.error(`Failed to save ${destinationFilename}.`, e);
+        }
+      }
+      await client.send("Fetch.continueRequest", e);
+    };
+  });
+  await client.on("Fetch.requestPaused", onRequestPaused!);
+  await page.goto(link);
+  return promise;
 }
