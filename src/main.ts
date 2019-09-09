@@ -29,6 +29,7 @@ async function run({ url, output }: typeof argv) {
   });
 
   const page = await browser.newPage();
+  await page.setDefaultNavigationTimeout(0);
   await page.goto(url);
 
   const linkElements = await page.$$("a");
@@ -58,6 +59,8 @@ async function download(
   destinationFilename: string
 ): Promise<void> {
   const page = await browser.newPage();
+  await page.setDefaultNavigationTimeout(0);
+    
   const client = await page.target().createCDPSession();
   await client.send("Fetch.enable", {
     patterns: [
